@@ -6,6 +6,8 @@
 #include <string>
 #include <nlohmann/json.hpp>
 #include <Windows.h>
+#include <gplot++.h>
+
 
 using json = nlohmann::ordered_json;
 
@@ -61,11 +63,29 @@ std::string decrypt(
     return result;
 }
 
+void plotStats(Gnuplot& plt, std::map<int, std::pair<int, double>>& codeStats) {
+
+    std::vector<double> data;
+    for (const auto& [key, value] : codeStats) {
+        data.push_back(codeStats[key].second);
+    }
+    plt.set_title("Plot #2");
+    plt.set_xlabel("Value");
+    plt.set_ylabel("Number of counts");
+    plt.histogram(data, 2, "Histogram");
+    plt.set_xrange(-1, 7);
+    plt.set_yrange(0, codeStats.size());
+    plt.show(); // Always call "show"!
+}
+
 int main() {
+    std::map<std::string, std::pair<int, double>> charStats; // літера → (кількість, частота)
+    std::map<int, std::pair<int, double>> codeStats;
+
+    Gnuplot plt{};
     SetConsoleOutputCP(CP_UTF8);
 
-    std::map<std::string, std::pair<int, double>> charStats; // літера → (кількість, частота)
-    std::map<int, std::pair<int, double>> codeStats;         // код → (кількість, частота)
+     // код → (кількість, частота)
 
     // завантажуємо таблицю
     std::ifstream f("table.json");
@@ -107,6 +127,8 @@ int main() {
     for (auto& [ch, stat] : charStats) {
         std::cout << ch << " → count=" << stat.first << ", freq=" << stat.second << "\n";
     }
+
+    plotStats(plt, codeStats);
 
     return 0;
 }
