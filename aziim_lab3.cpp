@@ -11,7 +11,6 @@
 
 using json = nlohmann::ordered_json;
 
-// Створюємо зворотну таблицю для дешифрування
 std::unordered_map<std::string, std::string> buildReverseTable(const json& j) {
     std::unordered_map<std::string, std::string> reverseTable;
     for (auto& [letter, codes] : j.items()) {
@@ -40,19 +39,16 @@ std::string decrypt(
         if (it != reverseTable.end()) {
             result += it->second;
 
-            // статистика по символах
             charStats[it->second].first++;
         }
         else {
             result += "?";
         }
 
-        // статистика по кодах
         int numeric = std::stoi(code);
         codeStats[numeric].first++;
     }
 
-    // підрахунок відносних частот
     for (auto& [c, st] : charStats) {
         st.second = static_cast<double>(st.first) / result.size();
     }
@@ -63,20 +59,73 @@ std::string decrypt(
     return result;
 }
 
-void plotStats(Gnuplot& plt, std::map<int, std::pair<int, double>>& codeStats) {
+void plotStats(Gnuplot& plt, const std::map<int, std::pair<int, double>>& codeStats) {
+    std::vector<int> x;               
+    std::vector<double> counts;      
+    std::vector<int> labels;  
 
-    std::vector<double> data;
-    for (const auto& [key, value] : codeStats) {
-        data.push_back(codeStats[key].second);
+    int idx = 0;
+    for (const auto& [ch, stats] : codeStats) {
+        x.push_back(idx++);
+        counts.push_back(stats.first);
+        labels.push_back(ch);
     }
-    plt.set_title("Plot #2");
-    plt.set_xlabel("Value");
-    plt.set_ylabel("Number of counts");
-    plt.histogram(data, 2, "Histogram");
-    plt.set_xrange(-1, 7);
-    plt.set_yrange(0, codeStats.size());
-    plt.show(); // Always call "show"!
+
+    std::ostringstream xtics;
+    xtics << "(";
+    for (size_t i = 0; i < labels.size(); ++i) {
+        xtics << "\"" << labels[i] << "\" " << i;
+        if (i != labels.size() - 1) xtics << ", ";
+    }
+    xtics << ")";
+
+    plt.sendcommand("set title 'Character Statistics'");
+    plt.sendcommand("set xlabel 'Character'");
+    plt.sendcommand("set ylabel 'Occurrences'");
+    plt.sendcommand("set style fill solid 0.5 border -1");
+    plt.sendcommand("set style data histograms");
+    plt.sendcommand("set boxwidth 0.9");
+    plt.sendcommand("set xtics " + xtics.str());
+
+    plt.plot(x, counts, "Occurrences", Gnuplot::LineStyle::BOXES);
+
+    plt.show();
 }
+
+void plotCharStats(Gnuplot& plt, const std::map<std::string, std::pair<int, double>>& charStats) {
+    std::vector<int> x;               
+    std::vector<double> counts;       
+    std::vector<std::string> labels;  
+
+    int idx = 0;
+    for (const auto& [ch, stats] : charStats) {
+        x.push_back(idx++);
+        counts.push_back(stats.first);
+        labels.push_back(ch);
+    }
+
+    std::ostringstream xtics;
+    xtics << "(";
+    for (size_t i = 0; i < labels.size(); ++i) {
+        xtics << "\"" << labels[i] << "\" " << i;
+        if (i != labels.size() - 1) xtics << ", ";
+    }
+    xtics << ")";
+
+    plt.sendcommand("set title 'Character Statistics'");
+    plt.sendcommand("set xlabel 'Character'");
+    plt.sendcommand("set ylabel 'Occurrences'");
+    plt.sendcommand("set style fill solid 0.5 border -1");
+    plt.sendcommand("set style data histograms");
+    plt.sendcommand("set boxwidth 0.9");
+    plt.sendcommand("set xtics " + xtics.str());
+
+    plt.plot(x, counts, "Occurrences", Gnuplot::LineStyle::BOXES);
+
+    plt.show();
+}
+
+
 
 int main() {
     std::map<std::string, std::pair<int, double>> charStats; // літера → (кількість, частота)
@@ -85,9 +134,6 @@ int main() {
     Gnuplot plt{};
     SetConsoleOutputCP(CP_UTF8);
 
-     // код → (кількість, частота)
-
-    // завантажуємо таблицю
     std::ifstream f("table.json");
     if (!f) {
         std::cerr << "Не вдалось відкрити table.json\n";
@@ -99,7 +145,6 @@ int main() {
 
     auto reverseTable = buildReverseTable(j);
 
-    // читаємо шифротекст
     std::ifstream fin("cipher_text.txt", std::ios::binary);
     if (!fin) {
         std::cerr << "Не вдалось відкрити cipher_text.txt\n";
@@ -108,10 +153,8 @@ int main() {
     std::string cipher((std::istreambuf_iterator<char>(fin)), {});
     fin.close();
 
-    // дешифрування
     std::string plain = decrypt(cipher, reverseTable, charStats, codeStats);
 
-    // запис результату
     std::ofstream fout("decrypted_text.txt", std::ios::binary);
     fout << plain;
     fout.close();
@@ -128,7 +171,8 @@ int main() {
         std::cout << ch << " → count=" << stat.first << ", freq=" << stat.second << "\n";
     }
 
-    plotStats(plt, codeStats);
-
+    //plotting
+    //plotStats(plt, codeStats);
+    //plotCharStats(plt, charStats);
     return 0;
 }
