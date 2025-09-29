@@ -6,6 +6,8 @@
 #include <string>
 #include <nlohmann/json.hpp>
 #include <Windows.h>
+#include <gplot++.h>
+
 
 using json = nlohmann::ordered_json;
 
@@ -57,11 +59,80 @@ std::string decrypt(
     return result;
 }
 
-int main() {
-    SetConsoleOutputCP(CP_UTF8);
+void plotStats(Gnuplot& plt, const std::map<int, std::pair<int, double>>& codeStats) {
+    std::vector<int> x;               
+    std::vector<double> counts;      
+    std::vector<int> labels;  
 
-    std::map<std::string, std::pair<int, double>> charStats; 
-    std::map<int, std::pair<int, double>> codeStats;         
+    int idx = 0;
+    for (const auto& [ch, stats] : codeStats) {
+        x.push_back(idx++);
+        counts.push_back(stats.first);
+        labels.push_back(ch);
+    }
+
+    std::ostringstream xtics;
+    xtics << "(";
+    for (size_t i = 0; i < labels.size(); ++i) {
+        xtics << "\"" << labels[i] << "\" " << i;
+        if (i != labels.size() - 1) xtics << ", ";
+    }
+    xtics << ")";
+
+    plt.sendcommand("set title 'Character Statistics'");
+    plt.sendcommand("set xlabel 'Character'");
+    plt.sendcommand("set ylabel 'Occurrences'");
+    plt.sendcommand("set style fill solid 0.5 border -1");
+    plt.sendcommand("set style data histograms");
+    plt.sendcommand("set boxwidth 0.9");
+    plt.sendcommand("set xtics " + xtics.str());
+
+    plt.plot(x, counts, "Occurrences", Gnuplot::LineStyle::BOXES);
+
+    plt.show();
+}
+
+void plotCharStats(Gnuplot& plt, const std::map<std::string, std::pair<int, double>>& charStats) {
+    std::vector<int> x;               
+    std::vector<double> counts;       
+    std::vector<std::string> labels;  
+
+    int idx = 0;
+    for (const auto& [ch, stats] : charStats) {
+        x.push_back(idx++);
+        counts.push_back(stats.first);
+        labels.push_back(ch);
+    }
+
+    std::ostringstream xtics;
+    xtics << "(";
+    for (size_t i = 0; i < labels.size(); ++i) {
+        xtics << "\"" << labels[i] << "\" " << i;
+        if (i != labels.size() - 1) xtics << ", ";
+    }
+    xtics << ")";
+
+    plt.sendcommand("set title 'Character Statistics'");
+    plt.sendcommand("set xlabel 'Character'");
+    plt.sendcommand("set ylabel 'Occurrences'");
+    plt.sendcommand("set style fill solid 0.5 border -1");
+    plt.sendcommand("set style data histograms");
+    plt.sendcommand("set boxwidth 0.9");
+    plt.sendcommand("set xtics " + xtics.str());
+
+    plt.plot(x, counts, "Occurrences", Gnuplot::LineStyle::BOXES);
+
+    plt.show();
+}
+
+
+
+int main() {
+    std::map<std::string, std::pair<int, double>> charStats; // літера → (кількість, частота)
+    std::map<int, std::pair<int, double>> codeStats;
+
+    Gnuplot plt{};
+    SetConsoleOutputCP(CP_UTF8);
 
     std::ifstream f("table.json");
     if (!f) {
@@ -100,5 +171,8 @@ int main() {
         std::cout << ch << " → count=" << stat.first << ", freq=" << stat.second * 100 << "%" <<  "\n";
     }
 
+    //plotting
+    //plotStats(plt, codeStats);
+    //plotCharStats(plt, charStats);
     return 0;
 }
