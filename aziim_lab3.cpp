@@ -9,7 +9,6 @@
 
 using json = nlohmann::ordered_json;
 
-// Створюємо зворотну таблицю для дешифрування
 std::unordered_map<std::string, std::string> buildReverseTable(const json& j) {
     std::unordered_map<std::string, std::string> reverseTable;
     for (auto& [letter, codes] : j.items()) {
@@ -38,36 +37,32 @@ std::string decrypt(
         if (it != reverseTable.end()) {
             result += it->second;
 
-            // статистика по символах
             charStats[it->second].first++;
         }
         else {
             result += "?";
         }
 
-        // статистика по кодах
         int numeric = std::stoi(code);
         codeStats[numeric].first++;
     }
 
-    // підрахунок відносних частот
     for (auto& [c, st] : charStats) {
-        st.second = static_cast<double>(st.first) / result.size();
+        st.second = static_cast<double>(st.first) / totalCodes;
     }
     for (auto& [c, st] : codeStats) {
         st.second = static_cast<double>(st.first) / totalCodes;
     }
-
+    std::cout << result.size();
     return result;
 }
 
 int main() {
     SetConsoleOutputCP(CP_UTF8);
 
-    std::map<std::string, std::pair<int, double>> charStats; // літера → (кількість, частота)
-    std::map<int, std::pair<int, double>> codeStats;         // код → (кількість, частота)
+    std::map<std::string, std::pair<int, double>> charStats; 
+    std::map<int, std::pair<int, double>> codeStats;         
 
-    // завантажуємо таблицю
     std::ifstream f("table.json");
     if (!f) {
         std::cerr << "Не вдалось відкрити table.json\n";
@@ -79,7 +74,6 @@ int main() {
 
     auto reverseTable = buildReverseTable(j);
 
-    // читаємо шифротекст
     std::ifstream fin("cipher_text.txt", std::ios::binary);
     if (!fin) {
         std::cerr << "Не вдалось відкрити cipher_text.txt\n";
@@ -88,10 +82,8 @@ int main() {
     std::string cipher((std::istreambuf_iterator<char>(fin)), {});
     fin.close();
 
-    // дешифрування
     std::string plain = decrypt(cipher, reverseTable, charStats, codeStats);
 
-    // запис результату
     std::ofstream fout("decrypted_text.txt", std::ios::binary);
     fout << plain;
     fout.close();
@@ -100,12 +92,12 @@ int main() {
 
     std::cout << "Статистика по кодах:\n";
     for (auto& [code, stat] : codeStats) {
-        std::cout << code << " → count=" << stat.first << ", freq=" << stat.second << "\n";
+        std::cout << code << " → count=" << stat.first << ", freq=" << stat.second * 100 << "%" << "\n";
     }
 
     std::cout << "\nСтатистика по символах:\n";
     for (auto& [ch, stat] : charStats) {
-        std::cout << ch << " → count=" << stat.first << ", freq=" << stat.second << "\n";
+        std::cout << ch << " → count=" << stat.first << ", freq=" << stat.second * 100 << "%" <<  "\n";
     }
 
     return 0;
